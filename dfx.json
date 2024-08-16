@@ -1,0 +1,17 @@
+{
+  "canisters": {
+    "farming_sacco_backend": {
+      "candid": "src/farming_sacco_backend/farming_sacco_backend.did",
+      "package": "farming_sacco_backend",
+      "type": "rust"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

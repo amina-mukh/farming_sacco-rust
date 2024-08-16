@@ -1,0 +1,80 @@
+type ActivityPayload = record {
+  date : text;
+  description : text;
+  plot_id : text;
+};
+type Event = record {
+  id : text;
+  title : text;
+  date : text;
+  description : text;
+  created_at : text;
+  location : text;
+};
+type EventPayload = record {
+  title : text;
+  date : text;
+  description : text;
+  location : text;
+};
+type FarmPlot = record {
+  id : text;
+  farmer_id : text;
+  size : text;
+  created_at : text;
+  location : text;
+  reserved_until : text;
+};
+type Farmer = record {
+  owner : text;
+  farmer_id : text;
+  name : text;
+  created_at : text;
+  email : text;
+  phone_number : text;
+};
+type FarmerPayload = record { name : text; email : text; phone_number : text };
+type FarmingActivity = record {
+  id : text;
+  date : text;
+  description : text;
+  created_at : text;
+  plot_id : text;
+};
+type Message = variant {
+  Error : text;
+  InvalidPayload : text;
+  NotFound : text;
+  Success : text;
+};
+type PlotPayload = record {
+  farmer_id : text;
+  size : text;
+  location : text;
+  reserved_until : text;
+};
+type Resource = record {
+  id : text;
+  name : text;
+  created_at : text;
+  available : bool;
+  quantity : nat64;
+};
+type ResourcePayload = record {
+  name : text;
+  available : bool;
+  quantity : nat64;
+};
+type Result = variant { Ok : Farmer; Err : Message };
+type Result_1 = variant { Ok : FarmPlot; Err : Message };
+type Result_2 = variant { Ok : FarmingActivity; Err : Message };
+type Result_3 = variant { Ok : Event; Err : Message };
+type Result_4 = variant { Ok : Resource; Err : Message };
+service : {
+  create_farmer_profile : (FarmerPayload) -> (Result);
+  update_farm_plot : (text, PlotPayload) -> (Result_1);
+  update_farmer_profile : (text, FarmerPayload) -> (Result);
+  update_farming_activity : (text, ActivityPayload) -> (Result_2);
+  upsert_event : (text, EventPayload) -> (Result_3);
+  upsert_resource : (text, ResourcePayload) -> (Result_4);
+}
