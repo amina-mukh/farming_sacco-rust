@@ -217,45 +217,9 @@ enum Message {
 // Function to create a new farmer profile
 #[ic_cdk::update]
 fn create_farmer_profile(payload: FarmerPayload) -> Result<Farmer, Message> {
-    if payload.name.is_empty() || payload.email.is_empty() || payload.phone_number.is_empty() {
-        return Err(Message::InvalidPayload(
-            "Ensure 'name', 'email', and 'phone_number' are provided.".to_string(),
-        ));
-    }
+    validate_farmer_payload(&payload)?;
 
-    // Validate email
-    let email_regex = Regex::new(r"^[^\s@]+@[^\s@]+\.[^\s@]+$").unwrap();
-    if !email_regex.is_match(&payload.email) {
-        return Err(Message::InvalidPayload(
-            "Invalid email format: Ensure the email is in the correct format.".to_string(),
-        ));
-    }
-
-    // Validate the email address to make it unique
-    let email = payload.email.clone();
-    let email_exists = FARMERS_STORAGE.with(|storage| {
-        storage.borrow().iter().any(|(_, farmer)| farmer.email == email)
-    });
-    if email_exists {
-        return Err(Message::InvalidPayload(
-            "Email already exists: Ensure the email address is unique.".to_string(),
-        ));
-    }
-
-    // Validate phone number
-    let phone_number_regex = Regex::new(r"^\d{10}$").unwrap();
-    if !phone_number_regex.is_match(&payload.phone_number) {
-        return Err(Message::InvalidPayload(
-            "Invalid phone number: Ensure the phone number is in the correct format.".to_string(),
-        ));
-    }
-
-    let id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Cannot increment ID counter");
+    let id = generate_unique_id()?;
 
     let farmer = Farmer {
         farmer_id: id.to_string(),
@@ -274,38 +238,7 @@ fn create_farmer_profile(payload: FarmerPayload) -> Result<Farmer, Message> {
 // Function to update a farmer profile
 #[ic_cdk::update]
 fn update_farmer_profile(farmer_id: String, payload: FarmerPayload) -> Result<Farmer, Message> {
-    if payload.name.is_empty() || payload.email.is_empty() || payload.phone_number.is_empty() {
-        return Err(Message::InvalidPayload(
-            "Ensure 'name', 'email', and 'phone_number' are provided.".to_string(),
-        ));
-    }
-
-    // Validate email
-    let email_regex = Regex::new(r"^[^\s@]+@[^\s@]+\.[^\s@]+$").unwrap();
-    if !email_regex.is_match(&payload.email) {
-        return Err(Message::InvalidPayload(
-            "Invalid email format: Ensure the email is in the correct format.".to_string(),
-        ));
-    }
-
-    // Validate the email address to make it unique
-    let email = payload.email.clone();
-    let email_exists = FARMERS_STORAGE.with(|storage| {
-        storage.borrow().iter().any(|(_, farmer)| farmer.email == email)
-    });
-    if email_exists {
-        return Err(Message::InvalidPayload(
-            "Email already exists: Ensure the email address is unique.".to_string(),
-        ));
-    }
-
-    // Validate phone number
-    let phone_number_regex = Regex::new(r"^\d{10}$").unwrap();
-    if !phone_number_regex.is_match(&payload.phone_number) {
-        return Err(Message::InvalidPayload(
-            "Invalid phone number: Ensure the phone number is in the correct format.".to_string(),
-        ));
-    }
+    validate_farmer_payload(&payload)?;
 
     let farmer_id = farmer_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
         "Invalid farmer_id: Ensure the farmer ID is valid.".to_string(),
@@ -333,22 +266,7 @@ fn update_farmer_profile(farmer_id: String, payload: FarmerPayload) -> Result<Fa
 // Function to update a farm plot
 #[ic_cdk::update]
 fn update_farm_plot(plot_id: String, payload: PlotPayload) -> Result<FarmPlot, Message> {
-    if payload.farmer_id.is_empty() || payload.size.is_empty() || payload.location.is_empty() || payload.reserved_until.is_empty() {
-        return Err(Message::InvalidPayload(
-            "Ensure 'farmer_id', 'size', 'location', and 'reserved_until' are provided.".to_string(),
-        ));
-    }
-
-    // Validate the farmer_id to ensure it exists
-    let farmer_id = payload.farmer_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
-        "Invalid farmer_id: Ensure the farmer ID is valid.".to_string(),
-    ))?;
-    let farmer_exists = FARMERS_STORAGE.with(|storage| storage.borrow().contains_key(&farmer_id));
-    if !farmer_exists {
-        return Err(Message::InvalidPayload(
-            "Farmer ID does not exist: Ensure the farmer ID is valid.".to_string(),
-        ));
-    }
+    validate_plot_payload(&payload)?;
 
     let plot_id = plot_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
         "Invalid plot_id: Ensure the plot ID is valid.".to_string(),
@@ -377,22 +295,7 @@ fn update_farm_plot(plot_id: String, payload: PlotPayload) -> Result<FarmPlot, M
 // Function to update a farming activity
 #[ic_cdk::update]
 fn update_farming_activity(activity_id: String, payload: ActivityPayload) -> Result<FarmingActivity, Message> {
-    if payload.plot_id.is_empty() || payload.description.is_empty() || payload.date.is_empty() {
-        return Err(Message::InvalidPayload(
-            "Ensure 'plot_id', 'description', and 'date' are provided.".to_string(),
-        ));
-    }
-
-    // Validate the plot_id to ensure it exists
-    let plot_id = payload.plot_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
-        "Invalid plot_id: Ensure the plot ID is valid.".to_string(),
-    ))?;
-    let plot_exists = PLOTS_STORAGE.with(|storage| storage.borrow().contains_key(&plot_id));
-    if !plot_exists {
-        return Err(Message::InvalidPayload(
-            "Plot ID does not exist: Ensure the plot ID is valid.".to_string(),
-        ));
-    }
+    validate_activity_payload(&payload)?;
 
     let activity_id = activity_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
         "Invalid activity_id: Ensure the activity ID is valid.".to_string(),
@@ -420,11 +323,7 @@ fn update_farming_activity(activity_id: String, payload: ActivityPayload) -> Res
 // Function to create or update a resource
 #[ic_cdk::update]
 fn upsert_resource(resource_id: String, payload: ResourcePayload) -> Result<Resource, Message> {
-    if payload.name.is_empty() || payload.quantity == 0 {
-        return Err(Message::InvalidPayload(
-            "Ensure 'name' and 'quantity' are provided and quantity is greater than 0.".to_string(),
-        ));
-    }
+    validate_resource_payload(&payload)?;
 
     let id = resource_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
         "Invalid resource_id: Ensure the resource ID is valid.".to_string(),
@@ -446,11 +345,7 @@ fn upsert_resource(resource_id: String, payload: ResourcePayload) -> Result<Reso
 // Function to create or update an event
 #[ic_cdk::update]
 fn upsert_event(event_id: String, payload: EventPayload) -> Result<Event, Message> {
-    if payload.title.is_empty() || payload.description.is_empty() || payload.date.is_empty() || payload.location.is_empty() {
-        return Err(Message::InvalidPayload(
-            "Ensure 'title', 'description', 'date', and 'location' are provided.".to_string(),
-        ));
-    }
+    validate_event_payload(&payload)?;
 
     let id = event_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
         "Invalid event_id: Ensure the event ID is valid.".to_string(),
@@ -469,4 +364,140 @@ fn upsert_event(event_id: String, payload: EventPayload) -> Result<Event, Messag
 
     Ok(event)
 }
+
+// Function to fetch a farmer by ID
+#[ic_cdk::query]
+fn get_farmer(farmer_id: String) -> Result<Farmer, Message> {
+    let farmer_id = farmer_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
+        "Invalid farmer_id: Ensure the farmer ID is valid.".to_string(),
+    ))?;
+
+    FARMERS_STORAGE.with(|storage| {
+        storage
+            .borrow()
+            .get(&farmer_id)
+            .map(|farmer| farmer.clone())
+            .ok_or(Message::NotFound(
+                "Farmer not found: Ensure the farmer ID is correct.".to_string(),
+            ))
+    })
+}
+
+// Function to fetch all farmers
+#[ic_cdk::query]
+fn get_all_farmers() -> Vec<Farmer> {
+    FARMERS_STORAGE.with(|storage| {
+        storage.borrow().iter().map(|(_, farmer)| farmer.clone()).collect()
+    })
+}
+
+// Helper function to generate a unique ID
+fn generate_unique_id() -> Result<u64, Message> {
+    let id = ID_COUNTER
+        .with(|counter| {
+            let current_value = *counter.borrow().get();
+            counter.borrow_mut().set(current_value + 1)
+        })
+        .map_err(|_| Message::Error("Failed to generate a unique ID".to_string()))?;
+    Ok(id)
+}
+
+// Helper function to validate FarmerPayload
+fn validate_farmer_payload(payload: &FarmerPayload) -> Result<(), Message> {
+    if payload.name.is_empty() || payload.email.is_empty() || payload.phone_number.is_empty() {
+        return Err(Message::InvalidPayload(
+            "Ensure 'name', 'email', and 'phone_number' are provided.".to_string(),
+        ));
+    }
+
+    let email_regex = Regex::new(r"^[^\s@]+@[^\s@]+\.[^\s@]+$").unwrap();
+    if !email_regex.is_match(&payload.email) {
+        return Err(Message::InvalidPayload(
+            "Invalid email format: Ensure the email is in the correct format.".to_string(),
+        ));
+    }
+
+    let email_exists = FARMERS_STORAGE.with(|storage| {
+        storage.borrow().iter().any(|(_, farmer)| farmer.email == payload.email)
+    });
+    if email_exists {
+        return Err(Message::InvalidPayload(
+            "Email already exists: Ensure the email address is unique.".to_string(),
+        ));
+    }
+
+    let phone_number_regex = Regex::new(r"^\d{10}$").unwrap();
+    if !phone_number_regex.is_match(&payload.phone_number) {
+        return Err(Message::InvalidPayload(
+            "Invalid phone number: Ensure the phone number is in the correct format.".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+// Helper function to validate PlotPayload
+fn validate_plot_payload(payload: &PlotPayload) -> Result<(), Message> {
+    if payload.farmer_id.is_empty() || payload.size.is_empty() || payload.location.is_empty() || payload.reserved_until.is_empty() {
+        return Err(Message::InvalidPayload(
+            "Ensure 'farmer_id', 'size', 'location', and 'reserved_until' are provided.".to_string(),
+        ));
+    }
+
+    let farmer_id = payload.farmer_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
+        "Invalid farmer_id: Ensure the farmer ID is valid.".to_string(),
+    ))?;
+    let farmer_exists = FARMERS_STORAGE.with(|storage| storage.borrow().contains_key(&farmer_id));
+    if !farmer_exists {
+        return Err(Message::InvalidPayload(
+            "Farmer ID does not exist: Ensure the farmer ID is valid.".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+// Helper function to validate ActivityPayload
+fn validate_activity_payload(payload: &ActivityPayload) -> Result<(), Message> {
+    if payload.plot_id.is_empty() || payload.description.is_empty() || payload.date.is_empty() {
+        return Err(Message::InvalidPayload(
+            "Ensure 'plot_id', 'description', and 'date' are provided.".to_string(),
+        ));
+    }
+
+    let plot_id = payload.plot_id.parse::<u64>().map_err(|_| Message::InvalidPayload(
+        "Invalid plot_id: Ensure the plot ID is valid.".to_string(),
+    ))?;
+    let plot_exists = PLOTS_STORAGE.with(|storage| storage.borrow().contains_key(&plot_id));
+    if !plot_exists {
+        return Err(Message::InvalidPayload(
+            "Plot ID does not exist: Ensure the plot ID is valid.".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+// Helper function to validate ResourcePayload
+fn validate_resource_payload(payload: &ResourcePayload) -> Result<(), Message> {
+    if payload.name.is_empty() || payload.quantity == 0 {
+        return Err(Message::InvalidPayload(
+            "Ensure 'name' and 'quantity' are provided and quantity is greater than 0.".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+// Helper function to validate EventPayload
+fn validate_event_payload(payload: &EventPayload) -> Result<(), Message> {
+    if payload.title.is_empty() || payload.description.is_empty() || payload.date.is_empty() || payload.location.is_empty() {
+        return Err(Message::InvalidPayload(
+            "Ensure 'title', 'description', 'date', and 'location' are provided.".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
 ic_cdk::export_candid!();

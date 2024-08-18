@@ -72,6 +72,8 @@ type Result_3 = variant { Ok : Event; Err : Message };
 type Result_4 = variant { Ok : Resource; Err : Message };
 service : {
   create_farmer_profile : (FarmerPayload) -> (Result);
+  get_all_farmers : () -> (vec Farmer) query;
+  get_farmer : (text) -> (Result) query;
   update_farm_plot : (text, PlotPayload) -> (Result_1);
   update_farmer_profile : (text, FarmerPayload) -> (Result);
   update_farming_activity : (text, ActivityPayload) -> (Result_2);
